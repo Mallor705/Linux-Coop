@@ -40,6 +40,12 @@ if ! pgrep -x "steam" > /dev/null; then
   sleep 5
 fi
 
+# Verificar se o Bubblewrap está instalado 
+if ! command -v bwrap &> /dev/null; then
+  echo "Erro: Bubblewrap (bwrap) não está instalado. Instale com: sudo apt install bubblewrap"
+  exit 1
+fi
+
 # Descobrir o caminho do Proton
 find_proton_path() {
   local version=$1
