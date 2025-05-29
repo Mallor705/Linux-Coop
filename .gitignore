@@ -70,4 +70,5 @@ coverage.xml
 .vscode/
 
 # Outros arquivos
-*.log 
+*.log
+linux_coop_structure.md
