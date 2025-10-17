@@ -284,50 +284,54 @@ exec {gamescope_cmd_str} -- env LD_PRELOAD="$LD_PRELOAD_BAK" {proton_cmd_str}
         device_info = self._validate_input_devices(profile, instance_idx, instance.instance_num)
 
         env = self._prepare_environment(instance, steam_root, proton_path, profile, device_info)
+
+        # Invertido: Lançar o sidecar PRIMEIRO para evitar que o Gamescope o capture
+        if profile.sidecar_executable:
+            sidecar_path = Path(profile.sidecar_executable)
+            if sidecar_path.exists():
+                self.logger.info(f"Instance {instance.instance_num}: Pre-launching sidecar executable: {sidecar_path}")
+                sidecar_cmd = self._build_sidecar_command(profile, proton_path, instance, sidecar_path, env)
+                try:
+                    # Abrir o log no modo 'w' para o sidecar para limpar logs antigos, o jogo irá anexar
+                    with open(instance.log_file, 'w') as log:
+                        log.write(f"--- Launching Sidecar: {sidecar_path} ---\n")
+                        sidecar_process = subprocess.Popen(
+                            sidecar_cmd,
+                            stdout=log,
+                            stderr=subprocess.STDOUT,
+                            cwd=sidecar_path.parent,
+                            preexec_fn=os.setpgrp
+                        )
+                    self.logger.info(f"Instance {instance.instance_num}: Sidecar process started with PID: {sidecar_process.pid}")
+                    # Dar um pequeno compasso de espera para a janela do sidecar aparecer
+                    time.sleep(2)
+                except Exception as e:
+                    self.logger.error(f"Failed to launch sidecar executable for instance {instance.instance_num}: {e}")
+            else:
+                self.logger.warning(f"Instance {instance.instance_num}: Sidecar executable '{profile.sidecar_executable}' not found. Skipping.")
+
+        # Agora, lançar o jogo principal
         cmd = self._build_command(profile, proton_path, instance, symlinked_executable_path, cpu_affinity, env)
 
-        self.logger.info(f"Launching instance {instance.instance_num} (Log: {instance.log_file})")
+        self.logger.info(f"Launching main game for instance {instance.instance_num} (Log: {instance.log_file})")
         try:
-            with open(instance.log_file, 'w') as log:
+            # Usar o modo 'a' (append) para o log do jogo para não sobrescrever o log do sidecar
+            with open(instance.log_file, 'a') as log:
+                log.write(f"\n--- Launching Main Game: {profile.exe_path.name} ---\n")
                 process = subprocess.Popen(
                     cmd,
                     stdout=log,
                     stderr=subprocess.STDOUT,
-                    # The env is now passed to the sandboxed process via bwrap's --setenv.
-                    # The bwrap process itself runs with the default environment.
                     cwd=symlinked_executable_path.parent,
                     preexec_fn=os.setpgrp
                 )
             pid = process.pid
             self.pids.append(pid)
             instance.pid = pid
-            self.logger.info(f"Instance {instance.instance_num} started with PID: {pid}")
-
-            # Launch sidecar executable if specified
-            if profile.sidecar_executable:
-                sidecar_path = Path(profile.sidecar_executable)
-                if sidecar_path.exists():
-                    self.logger.info(f"Instance {instance.instance_num}: Launching sidecar executable: {sidecar_path}")
-                    sidecar_cmd = self._build_sidecar_command(profile, proton_path, instance, sidecar_path, env)
-                    try:
-                        with open(instance.log_file, 'a') as log:
-                            log.write(f"\n--- Launching Sidecar: {sidecar_path} ---\n")
-                            sidecar_process = subprocess.Popen(
-                                sidecar_cmd,
-                                stdout=log,
-                                stderr=subprocess.STDOUT,
-                                cwd=sidecar_path.parent,
-                                preexec_fn=os.setpgrp
-                            )
-                        # We can store this PID if we need to manage the sidecar process independently
-                        self.logger.info(f"Instance {instance.instance_num}: Sidecar process started with PID: {sidecar_process.pid}")
-                    except Exception as e:
-                        self.logger.error(f"Failed to launch sidecar executable for instance {instance.instance_num}: {e}")
-                else:
-                    self.logger.warning(f"Instance {instance.instance_num}: Sidecar executable '{profile.sidecar_executable}' not found. Skipping.")
+            self.logger.info(f"Instance {instance.instance_num} main game started with PID: {pid}")
 
         except Exception as e:
-            self.logger.error(f"Failed to launch instance {instance.instance_num}: {e}")
+            self.logger.error(f"Failed to launch main game for instance {instance.instance_num}: {e}")
 
     def _prepare_environment(self, instance: GameInstance, steam_root: Optional[Path], proton_path: Optional[Path], profile: Optional[GameProfile] = None, device_info: dict = {}) -> dict:
         """Prepares a minimal environment for the game instance, plus device-specific vars."""
