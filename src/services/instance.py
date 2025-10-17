@@ -641,13 +641,22 @@ exec {gamescope_cmd_str} -- env LD_PRELOAD="$LD_PRELOAD_BAK" {proton_cmd_str}
         """Builds a simplified command to run a sidecar executable without device isolation."""
         self.logger.info(f"Instance {instance.instance_num}: Building simplified command for sidecar executable '{sidecar_exe_path}'.")
 
+        sidecar_args = []
+        if profile.sidecar_args:
+            try:
+                # Usar shlex.split para lidar com argumentos que contenham espaços e aspas
+                sidecar_args = shlex.split(profile.sidecar_args)
+                self.logger.info(f"Instance {instance.instance_num}: Parsed sidecar arguments: {sidecar_args}")
+            except ValueError as e:
+                self.logger.error(f"Instance {instance.instance_num}: Error parsing sidecar arguments '{profile.sidecar_args}': {e}")
+
         if profile.is_native:
-            base_cmd = [str(sidecar_exe_path)]
+            base_cmd = [str(sidecar_exe_path)] + sidecar_args
         else:
             if not proton_path:
                 self.logger.error(f"Instance {instance.instance_num}: Cannot launch Windows sidecar executable without a valid Proton path.")
                 return []
-            base_cmd = [str(proton_path), 'run', str(sidecar_exe_path)]
+            base_cmd = [str(proton_path), 'run', str(sidecar_exe_path)] + sidecar_args
 
         # Comando bwrap simplificado: não isola /dev/input
         bwrap_cmd = [

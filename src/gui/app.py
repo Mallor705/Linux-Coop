@@ -213,6 +213,7 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.apply_dxvk_vkd3d_check = Gtk.CheckButton(active=True)
         self.winetricks_verbs_entry = Gtk.Entry(placeholder_text="Optional (e.g., vcrun2019 dotnet48)")
         self.sidecar_executable_entry = Gtk.Entry(placeholder_text="Optional sidecar executable")
+        self.sidecar_args_entry = Gtk.Entry(placeholder_text="Optional sidecar arguments")
 
         # --- Layout & Display ---
         self.num_players_spin = Gtk.SpinButton.new_with_range(1, 4, 1)
@@ -321,6 +322,9 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         sidecar_path_button.connect("clicked", self.on_sidecar_path_button_clicked)
         sidecar_path_hbox.append(sidecar_path_button)
         launch_options_grid.attach(sidecar_path_hbox, 1, row, 1, 1)
+        row += 1
+        launch_options_grid.attach(Gtk.Label(label="Sidecar Arguments:", xalign=0), 0, row, 1, 1)
+        launch_options_grid.attach(self.sidecar_args_entry, 1, row, 1, 1)
 
 
         # --- Environment Variables Frame ---
@@ -918,7 +922,8 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
             selected_players=selected_players,
             apply_dxvk_vkd3d=self.apply_dxvk_vkd3d_check.get_active(),
             winetricks_verbs=winetricks_verbs,
-            sidecar_executable=self.sidecar_executable_entry.get_text() or None
+            sidecar_executable=self.sidecar_executable_entry.get_text() or None,
+            sidecar_args=self.sidecar_args_entry.get_text() or None
         )
 
     def on_play_button_clicked(self, widget):
@@ -1384,6 +1389,7 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.mode_combo.set_active(0)
         self.splitscreen_orientation_combo.set_active(0)
         self.sidecar_executable_entry.set_text("")
+        self.sidecar_args_entry.set_text("")
 
         # Env vars
         self._clear_environment_variables_ui()
@@ -1417,6 +1423,7 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.splitscreen_orientation_combo.set_sensitive(is_profile_selected)
         self.player_config_vbox.set_sensitive(is_profile_selected)
         self.sidecar_executable_entry.set_sensitive(is_profile_selected)
+        self.sidecar_args_entry.set_sensitive(is_profile_selected)
 
         # Set sensitivity for the notebook tabs
         self.notebook.get_nth_page(0).set_sensitive(is_game_selected) # Game Settings
@@ -1478,6 +1485,7 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
             self._create_player_config_uis(profile.num_players)
 
         self.sidecar_executable_entry.set_text(profile.sidecar_executable or "")
+        self.sidecar_args_entry.set_text(profile.sidecar_args or "")
 
         self.drawing_area.queue_draw()
 
