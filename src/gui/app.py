@@ -214,6 +214,8 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.winetricks_verbs_entry = Gtk.Entry(placeholder_text="Optional (e.g., vcrun2019 dotnet48)")
         self.sidecar_executable_entry = Gtk.Entry(placeholder_text="Optional sidecar executable")
         self.sidecar_args_entry = Gtk.Entry(placeholder_text="Optional sidecar arguments")
+        self.sidecar_width_spin = Gtk.SpinButton.new_with_range(320, 7680, 1)
+        self.sidecar_height_spin = Gtk.SpinButton.new_with_range(240, 4320, 1)
 
         # --- Layout & Display ---
         self.num_players_spin = Gtk.SpinButton.new_with_range(1, 4, 1)
@@ -325,6 +327,13 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         row += 1
         launch_options_grid.attach(Gtk.Label(label="Sidecar Arguments:", xalign=0), 0, row, 1, 1)
         launch_options_grid.attach(self.sidecar_args_entry, 1, row, 1, 1)
+        row += 1
+        sidecar_dims_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+        sidecar_dims_hbox.append(Gtk.Label(label="Sidecar Width:", xalign=0))
+        sidecar_dims_hbox.append(self.sidecar_width_spin)
+        sidecar_dims_hbox.append(Gtk.Label(label="Height:", xalign=0))
+        sidecar_dims_hbox.append(self.sidecar_height_spin)
+        launch_options_grid.attach(sidecar_dims_hbox, 1, row, 1, 1)
 
 
         # --- Environment Variables Frame ---
@@ -923,7 +932,9 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
             apply_dxvk_vkd3d=self.apply_dxvk_vkd3d_check.get_active(),
             winetricks_verbs=winetricks_verbs,
             sidecar_executable=self.sidecar_executable_entry.get_text() or None,
-            sidecar_args=self.sidecar_args_entry.get_text() or None
+            sidecar_args=self.sidecar_args_entry.get_text() or None,
+            sidecar_width=self.sidecar_width_spin.get_value_as_int() or 800,
+            sidecar_height=self.sidecar_height_spin.get_value_as_int() or 600
         )
 
     def on_play_button_clicked(self, widget):
@@ -1390,6 +1401,8 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.splitscreen_orientation_combo.set_active(0)
         self.sidecar_executable_entry.set_text("")
         self.sidecar_args_entry.set_text("")
+        self.sidecar_width_spin.set_value(800)
+        self.sidecar_height_spin.set_value(600)
 
         # Env vars
         self._clear_environment_variables_ui()
@@ -1424,6 +1437,8 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.player_config_vbox.set_sensitive(is_profile_selected)
         self.sidecar_executable_entry.set_sensitive(is_profile_selected)
         self.sidecar_args_entry.set_sensitive(is_profile_selected)
+        self.sidecar_width_spin.set_sensitive(is_profile_selected)
+        self.sidecar_height_spin.set_sensitive(is_profile_selected)
 
         # Set sensitivity for the notebook tabs
         self.notebook.get_nth_page(0).set_sensitive(is_game_selected) # Game Settings
@@ -1486,6 +1501,8 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
 
         self.sidecar_executable_entry.set_text(profile.sidecar_executable or "")
         self.sidecar_args_entry.set_text(profile.sidecar_args or "")
+        self.sidecar_width_spin.set_value(profile.sidecar_width or 800)
+        self.sidecar_height_spin.set_value(profile.sidecar_height or 600)
 
         self.drawing_area.queue_draw()
 

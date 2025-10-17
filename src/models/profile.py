@@ -61,6 +61,8 @@ class Profile(BaseModel):
     selected_players: Optional[List[int]] = Field(default=None, alias="selected_players")
     sidecar_executable: Optional[str] = Field(default=None, alias="SIDECAR_EXECUTABLE")
     sidecar_args: Optional[str] = Field(default=None, alias="SIDECAR_ARGS")
+    sidecar_width: Optional[int] = Field(default=None, alias="SIDECAR_WIDTH")
+    sidecar_height: Optional[int] = Field(default=None, alias="SIDECAR_HEIGHT")
 
     @validator('num_players')
     def validate_num_players(cls, v):

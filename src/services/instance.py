@@ -230,9 +230,9 @@ class InstanceService:
         else:
             self.logger.info(f"Instance {instance.instance_num}: Verified executable (not a symlink): {symlinked_exe_path_target}")
 
-    def _create_launcher_script(self, instance: GameInstance, gamescope_cmd: List[str], proton_cmd: List[str]) -> Path:
+    def _create_launcher_script(self, instance: GameInstance, gamescope_cmd: List[str], proton_cmd: List[str], script_name: str) -> Path:
         """Creates a launcher script to work around the Gamescope+LD_PRELOAD conflict."""
-        script_path = instance.prefix_dir / "protoncoop_launcher.sh"
+        script_path = instance.prefix_dir / script_name
         self.logger.info(f"Instance {instance.instance_num}: Creating Gamescope launcher script at {script_path}")
 
         # Use shlex.join to ensure all arguments are correctly quoted
@@ -429,7 +429,7 @@ exec {gamescope_cmd_str} -- env LD_PRELOAD="$LD_PRELOAD_BAK" {proton_cmd_str}
             # Build the game command without the Gamescope prefix
             game_cmd_without_gamescope = self._build_base_game_command(profile, proton_path, symlinked_exe_path, [], instance.instance_num)
             # Create the script that wraps both commands
-            launcher_script_path = self._create_launcher_script(instance, gamescope_cmd, game_cmd_without_gamescope)
+            launcher_script_path = self._create_launcher_script(instance, gamescope_cmd, game_cmd_without_gamescope, "protoncoop_launcher_main.sh")
             base_cmd = [str(launcher_script_path)]
         else:
             # Build base game command normally (without gamescope)
@@ -638,27 +638,40 @@ exec {gamescope_cmd_str} -- env LD_PRELOAD="$LD_PRELOAD_BAK" {proton_cmd_str}
         return env
 
     def _build_sidecar_command(self, profile: GameProfile, proton_path: Optional[Path], instance: GameInstance, sidecar_exe_path: Path, env: Dict[str, str]) -> List[str]:
-        """Builds a simplified command to run a sidecar executable without device isolation."""
-        self.logger.info(f"Instance {instance.instance_num}: Building simplified command for sidecar executable '{sidecar_exe_path}'.")
+        """Builds the full command to run a sidecar executable inside its own Gamescope instance."""
+        self.logger.info(f"Instance {instance.instance_num}: Building Gamescope command for sidecar executable '{sidecar_exe_path}'.")
 
+        # 1. Construir o comando base do sidecar (Proton + exe + args)
         sidecar_args = []
         if profile.sidecar_args:
             try:
-                # Usar shlex.split para lidar com argumentos que contenham espaços e aspas
                 sidecar_args = shlex.split(profile.sidecar_args)
                 self.logger.info(f"Instance {instance.instance_num}: Parsed sidecar arguments: {sidecar_args}")
             except ValueError as e:
                 self.logger.error(f"Instance {instance.instance_num}: Error parsing sidecar arguments '{profile.sidecar_args}': {e}")
 
         if profile.is_native:
-            base_cmd = [str(sidecar_exe_path)] + sidecar_args
+            sidecar_base_cmd = [str(sidecar_exe_path)] + sidecar_args
         else:
             if not proton_path:
                 self.logger.error(f"Instance {instance.instance_num}: Cannot launch Windows sidecar executable without a valid Proton path.")
                 return []
-            base_cmd = [str(proton_path), 'run', str(sidecar_exe_path)] + sidecar_args
+            sidecar_base_cmd = [str(proton_path), 'run', str(sidecar_exe_path)] + sidecar_args
 
-        # Comando bwrap simplificado: não isola /dev/input
+        # 2. Construir o comando Gamescope para o sidecar
+        gamescope_cmd = [
+            'gamescope',
+            '-b',
+            '-W', str(profile.sidecar_width or 800),
+            '-H', str(profile.sidecar_height or 600),
+            '-w', str(profile.sidecar_width or 800),
+            '-h', str(profile.sidecar_height or 600),
+        ]
+
+        # 3. Criar o script de launcher para o sidecar (para o workaround do LD_PRELOAD)
+        sidecar_launcher_script_path = self._create_launcher_script(instance, gamescope_cmd, sidecar_base_cmd, "protoncoop_launcher_sidecar.sh")
+
+        # 4. Construir o comando bwrap simplificado
         bwrap_cmd = [
             'bwrap',
             '--die-with-parent',
@@ -666,12 +679,11 @@ exec {gamescope_cmd_str} -- env LD_PRELOAD="$LD_PRELOAD_BAK" {proton_cmd_str}
             '--proc', '/proc',
             '--tmpfs', '/tmp',
         ]
-
-        # Passar o ambiente simplificado para dentro do sandbox
         for key, value in env.items():
             bwrap_cmd.extend(['--setenv', key, value])
 
-        final_cmd = bwrap_cmd + base_cmd
+        # 5. Juntar tudo
+        final_cmd = bwrap_cmd + [str(sidecar_launcher_script_path)]
         final_cmd_str = shlex.join(final_cmd)
         self.logger.info(f"Instance {instance.instance_num}: Full sidecar command: {final_cmd_str}")
 
