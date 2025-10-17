@@ -59,6 +59,7 @@ class Profile(BaseModel):
     splitscreen: Optional[SplitscreenConfig] = Field(default=None, alias="SPLITSCREEN")
     player_configs: Optional[List[PlayerInstanceConfig]] = Field(default=None, alias="PLAYERS")
     selected_players: Optional[List[int]] = Field(default=None, alias="selected_players")
+    sidecar_executable: Optional[str] = Field(default=None, alias="SIDECAR_EXECUTABLE")
 
     @validator('num_players')
     def validate_num_players(cls, v):

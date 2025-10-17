@@ -212,6 +212,7 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
 
         self.apply_dxvk_vkd3d_check = Gtk.CheckButton(active=True)
         self.winetricks_verbs_entry = Gtk.Entry(placeholder_text="Optional (e.g., vcrun2019 dotnet48)")
+        self.sidecar_executable_entry = Gtk.Entry(placeholder_text="Optional sidecar executable")
 
         # --- Layout & Display ---
         self.num_players_spin = Gtk.SpinButton.new_with_range(1, 4, 1)
@@ -311,6 +312,16 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         row += 1
         launch_options_grid.attach(Gtk.Label(label="Winetricks Verbs:", xalign=0), 0, row, 1, 1)
         launch_options_grid.attach(self.winetricks_verbs_entry, 1, row, 1, 1)
+        row += 1
+        launch_options_grid.attach(Gtk.Label(label="Sidecar Executable:", xalign=0), 0, row, 1, 1)
+        sidecar_path_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+        self.sidecar_executable_entry.set_hexpand(True)
+        sidecar_path_hbox.append(self.sidecar_executable_entry)
+        sidecar_path_button = Gtk.Button(label="Browse...")
+        sidecar_path_button.connect("clicked", self.on_sidecar_path_button_clicked)
+        sidecar_path_hbox.append(sidecar_path_button)
+        launch_options_grid.attach(sidecar_path_hbox, 1, row, 1, 1)
+
 
         # --- Environment Variables Frame ---
         env_vars_frame = Gtk.Frame(label="Custom Environment Variables")
@@ -451,6 +462,30 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
                 self.exe_path_entry.set_text(file.get_path())
         dialog.destroy()
         self.statusbar.set_label("Executable path selected.") # Changed from push
+
+    def on_sidecar_path_button_clicked(self, button):
+        """Handles the 'Browse...' button click to select a sidecar executable."""
+        dialog = Gtk.FileChooserDialog(
+            title="Select Sidecar Executable",
+            action=Gtk.FileChooserAction.OPEN
+        )
+
+        dialog.set_transient_for(self)
+        dialog.set_modal(True)
+        dialog.add_button("_Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("_Open", Gtk.ResponseType.OK)
+
+        dialog.connect("response", self._on_sidecar_path_dialog_response)
+        dialog.present()
+
+    def _on_sidecar_path_dialog_response(self, dialog, response):
+        """Handles the response from the file chooser dialog for the sidecar executable path."""
+        if response == Gtk.ResponseType.OK:
+            file = dialog.get_file()
+            if file:
+                self.sidecar_executable_entry.set_text(file.get_path())
+        dialog.destroy()
+        self.statusbar.set_label("Sidecar executable path selected.")
 
     def _populate_game_library(self):
         """Populates the TreeView with games from the GameManager."""
@@ -882,7 +917,8 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
             player_configs=self._get_player_configs_from_ui(),
             selected_players=selected_players,
             apply_dxvk_vkd3d=self.apply_dxvk_vkd3d_check.get_active(),
-            winetricks_verbs=winetricks_verbs
+            winetricks_verbs=winetricks_verbs,
+            sidecar_executable=self.sidecar_executable_entry.get_text() or None
         )
 
     def on_play_button_clicked(self, widget):
@@ -1347,6 +1383,7 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.instance_height_spin.set_value(1080)
         self.mode_combo.set_active(0)
         self.splitscreen_orientation_combo.set_active(0)
+        self.sidecar_executable_entry.set_text("")
 
         # Env vars
         self._clear_environment_variables_ui()
@@ -1379,6 +1416,7 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
         self.mode_combo.set_sensitive(is_profile_selected)
         self.splitscreen_orientation_combo.set_sensitive(is_profile_selected)
         self.player_config_vbox.set_sensitive(is_profile_selected)
+        self.sidecar_executable_entry.set_sensitive(is_profile_selected)
 
         # Set sensitivity for the notebook tabs
         self.notebook.get_nth_page(0).set_sensitive(is_game_selected) # Game Settings
@@ -1438,6 +1476,8 @@ class ProfileEditorWindow(Adw.ApplicationWindow):
             self._populate_player_configurations(profile.player_configs, profile)
         else:
             self._create_player_config_uis(profile.num_players)
+
+        self.sidecar_executable_entry.set_text(profile.sidecar_executable or "")
 
         self.drawing_area.queue_draw()
 
