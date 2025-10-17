@@ -290,7 +290,9 @@ exec {gamescope_cmd_str} -- env LD_PRELOAD="$LD_PRELOAD_BAK" {proton_cmd_str}
             sidecar_path = Path(profile.sidecar_executable)
             if sidecar_path.exists():
                 self.logger.info(f"Instance {instance.instance_num}: Pre-launching sidecar executable: {sidecar_path}")
-                sidecar_cmd = self._build_sidecar_command(profile, proton_path, instance, sidecar_path, env)
+                # Criar um ambiente simplificado SÓ para o sidecar
+                sidecar_env = self._prepare_sidecar_environment(instance, steam_root, proton_path, profile)
+                sidecar_cmd = self._build_sidecar_command(profile, proton_path, instance, sidecar_path, sidecar_env)
                 try:
                     # Abrir o log no modo 'w' para o sidecar para limpar logs antigos, o jogo irá anexar
                     with open(instance.log_file, 'w') as log:
@@ -608,26 +610,57 @@ exec {gamescope_cmd_str} -- env LD_PRELOAD="$LD_PRELOAD_BAK" {proton_cmd_str}
 
         return collected_paths
 
+    def _prepare_sidecar_environment(self, instance: GameInstance, steam_root: Optional[Path], proton_path: Optional[Path], profile: GameProfile) -> dict:
+        """Prepares a minimal environment specifically for the sidecar executable."""
+        env = os.environ.copy()
+        original_path = env.get('PATH', '')
+
+        # Clean up potentially conflicting Python variables
+        env.pop('PYTHONHOME', None)
+        env.pop('PYTHONPATH', None)
+
+        if not profile.is_native:
+            # --- Essential Proton/Wine variables ---
+            if steam_root:
+                env['STEAM_COMPAT_CLIENT_INSTALL_PATH'] = str(steam_root)
+            env['STEAM_COMPAT_DATA_PATH'] = str(instance.prefix_dir)
+            env['WINEPREFIX'] = str(instance.prefix_dir / 'pfx')
+
+            # --- PATH modification ---
+            if proton_path:
+                proton_bin_dir = proton_path.parent
+                env['PATH'] = f"{str(proton_bin_dir)}:{original_path}"
+
+        # NÃO adicionar variáveis de isolamento de dispositivo (SDL_JOYSTICK_DEVICE, etc.)
+        # NÃO adicionar variáveis do jogo (SteamAppId, etc.)
+
+        self.logger.info(f"Instance {instance.instance_num}: Minimal sidecar environment prepared.")
+        return env
+
     def _build_sidecar_command(self, profile: GameProfile, proton_path: Optional[Path], instance: GameInstance, sidecar_exe_path: Path, env: Dict[str, str]) -> List[str]:
-        """Builds the command to run a sidecar executable within the instance's environment."""
-        self.logger.info(f"Instance {instance.instance_num}: Building command for sidecar executable '{sidecar_exe_path}'.")
-        instance_idx = instance.instance_num - 1
-        device_info = self._validate_input_devices(profile, instance_idx, instance.instance_num)
+        """Builds a simplified command to run a sidecar executable without device isolation."""
+        self.logger.info(f"Instance {instance.instance_num}: Building simplified command for sidecar executable '{sidecar_exe_path}'.")
 
         if profile.is_native:
-            # For native games, we assume the sidecar is also native and can be run directly.
-            # We still wrap it in bwrap for consistency, but without Proton.
             base_cmd = [str(sidecar_exe_path)]
         else:
-            # For Windows games, we run the sidecar via the same Proton instance.
             if not proton_path:
                 self.logger.error(f"Instance {instance.instance_num}: Cannot launch Windows sidecar executable without a valid Proton path.")
                 return []
             base_cmd = [str(proton_path), 'run', str(sidecar_exe_path)]
 
-        # We reuse the bwrap command to ensure the sidecar runs in the *exact* same sandbox.
-        # This includes all environment variables and device bindings.
-        bwrap_cmd = self._build_bwrap_command(profile, instance_idx, device_info, instance.instance_num, env)
+        # Comando bwrap simplificado: não isola /dev/input
+        bwrap_cmd = [
+            'bwrap',
+            '--die-with-parent',
+            '--dev-bind', '/', '/',
+            '--proc', '/proc',
+            '--tmpfs', '/tmp',
+        ]
+
+        # Passar o ambiente simplificado para dentro do sandbox
+        for key, value in env.items():
+            bwrap_cmd.extend(['--setenv', key, value])
 
         final_cmd = bwrap_cmd + base_cmd
         final_cmd_str = shlex.join(final_cmd)
