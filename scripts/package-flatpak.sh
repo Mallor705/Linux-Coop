@@ -54,7 +54,7 @@ check_dependencies() {
 setup_runtime() {
     print_header "Setting up Flatpak Runtime"
 
-    local sdk_version="49"
+    local sdk_version="50"
     local runtime="org.gnome.Platform"
     local sdk="org.gnome.Sdk"
 
