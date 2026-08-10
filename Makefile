@@ -66,7 +66,7 @@ build: dev
 flatpak: dev validate-manifest
 	$(call print_header,"Building Flatpak package...")
 	@echo "Running Flatpak packaging script..."
-	@./scripts/package-flatpak.sh > /dev/null 2>&1
+	@./scripts/package-flatpak.sh
 	$(call print_success,"Flatpak package built successfully!")
 
 # Validate Flatpak manifest before building

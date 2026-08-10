@@ -39,28 +39,27 @@ class CommandBuilder:
         """
         Build the final command array in the correct order.
 
-        [gamescope] -> [bwrap] -> [steam]  (when gamescope is enabled)
+        [bwrap] -> [gamescope] -> [steam]  (when gamescope is enabled)
         [bwrap] -> [steam]                  (when gamescope is disabled)
         """
         # 1. Build the innermost steam command
         steam_cmd = self._build_base_steam_command()
 
-        # 2. Build the bwrap command, which will wrap the steam command
-        bwrap_cmd = self._build_bwrap_command(self.instance_num)
-
-        # 3. Prepend bwrap to the steam command
-        final_cmd = bwrap_cmd + steam_cmd
-
-        # 4. Build the Gamescope command and prepend it (if enabled)
+        # 2. Build the Gamescope command and prepend it (if enabled)
         if self.profile.use_gamescope:
             should_add_grab_flags = self.device_info.get("should_add_grab_flags", False)
             gamescope_cmd = self._build_gamescope_command(should_add_grab_flags)
 
             # Add the '--' separator before the command Gamescope will run
-            final_cmd = gamescope_cmd + ["--"] + final_cmd
+            inner_cmd = gamescope_cmd + ["--"] + steam_cmd
             self.logger.info(f"Instance {self.instance_num}: Launching with Gamescope")
         else:
+            inner_cmd = steam_cmd
             self.logger.info(f"Instance {self.instance_num}: Launching without Gamescope (bwrap only)")
+
+        # 3. Build the bwrap command and prepend it, wrapping gamescope and steam inside the sandbox
+        bwrap_cmd = self._build_bwrap_command(self.instance_num)
+        final_cmd = bwrap_cmd + inner_cmd
 
         return final_cmd
 
@@ -144,9 +143,15 @@ class CommandBuilder:
             "--proc", "/proc",
             "--die-with-parent",
             "--tmpfs", "/tmp",
-            "--bind", "/tmp/.X11-unix", "/tmp/.X11-unix",
+            "--tmpfs", "/tmp/.X11-unix",
         ]
         # fmt: on
+
+        host_x11_dir = Path("/tmp/.X11-unix")
+        if host_x11_dir.is_dir():
+            for socket_path in host_x11_dir.iterdir():
+                if socket_path.is_socket():
+                    cmd.extend(["--ro-bind", str(socket_path), str(socket_path)])
 
         # --- Device Isolation ---
 
