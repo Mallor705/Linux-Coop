@@ -147,9 +147,9 @@ Access our [Guide](https://github.com/mall0r/Twinverse/blob/main/docs/GUIDE.md) 
 
 ## ⚙️ How It Works
 
-Twinverse uses **Gamescope** (which creates the gaming environment and manages composition) and **Bubblewrap** (bwrap – a tool for building sandbox environments) to isolate each Steam Client instance. In this project, `bwrap` provides an extra layer of isolation around Gamescope, giving a more robust sandbox and allowing granular control over what should or should not be exposed or masked inside the container. This makes it possible to ignore devices unnecessary for that session or to recreate a dedicated *home* directory per instance. This allows each Steam to run in its own separate, independent environment. Thus, the instance cannot interfere with your desktop, and your desktop cannot interfere with it.
+Twinverse uses **Gamescope** (which creates the gaming environment and manages composition) and **Bubblewrap** (bwrap – a tool for building sandbox environments) to isolate each Steam Client instance. In this project, `bwrap` is used with an extra layer of isolation on top of Gamescope, providing a more robust sandbox and allowing granular control over what should or should not be exposed or masked inside the container. This makes it possible to ignore devices unnecessary for that session or to recreate a dedicated *home* directory per instance. This allows each Steam to run in its own separate, independent environment. Thus, the instance cannot interfere with your desktop, and your desktop cannot interfere with it.
 
-The final command line is assembled dynamically based on the user's configuration, following a nested structure where **`bwrap`** is the outermost layer, which runs **Gamescope**, which, in turn, launches **Steam** inside the sandbox.
+The final command line is assembled dynamically based on the user's configuration, following a nested structure where **Gamescope** is the outermost layer, which runs **`bwrap`**, which, in turn, launches **Steam**.
 
 ---
 

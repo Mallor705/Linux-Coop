@@ -143,9 +143,9 @@ Acesse nosso [Guide](https://github.com/mall0r/Twinverse/blob/main/docs/GUIDE.pt
 
 ## ⚙️ Como Funciona
 
-O Twinverse utiliza **Gamescope** (cria o ambiente de jogo e gerencia a composição) e o **Bubblewrap** (bwrap - ferramenta para a construção de ambientes sandbox), para isolar cada instância do Cliente Steam. O `bwrap` nesse projeto, é utilizado com uma camada extra de isolamento ao redor do gamescope, fornecendo um isolamento mais robusto e permitindo um controle granular sobre o que deve ou não ser exposto ou mascarado dentro do contêiner, permitindo ignorar dispositivos desnecessários para aquela sessão ou recriar um diretório *home* dedicado por instância. Isso permite que cada Steam seja executado em seu próprio ambiente estereo e independente. Assim, a instância não pode interferir com sua área de trabalho e sua área de trabalho não pode interferir com ela.
+O Twinverse utiliza **Gamescope** (cria o ambiente de jogo e gerencia a composição) e o **Bubblewrap** (bwrap - ferramenta para a construção de ambientes sandbox), para isolar cada instância do Cliente Steam. O `bwrap` nesse projeto, é utilizado com uma camada extra de isolamento somada ao gamescope, fornecendo um isolamento mais robusto e permitindo um controle granular sobre o que deve ou não ser exposto ou mascarado dentro do contêiner, permitindo ignorar dispositivos desnecessários para aquela sessão ou recriar um diretório *home* dedicado por instância. Isso permite que cada Steam seja executado em seu próprio ambiente estereo e independente. Assim, a instância não pode interferir com sua área de trabalho e sua área de trabalho não pode interferir com ela.
 
-A linha de comando final é montada dinamicamente com base nas configurações do usuário, seguindo uma estrutura de encapsulamento onde o **`bwrap`** é a camada mais externa, que executa o **Gamescope**, o qual, por sua vez, inicia o **Steam** dentro do sandbox.
+A linha de comando final é montada dinamicamente com base nas configurações do usuário, seguindo uma estrutura de encapsulamento onde o **Gamescope** é a camada mais externa, que executa o **`bwrap`**, o qual, por sua vez, inicia o **Steam**.
 
 ---
 

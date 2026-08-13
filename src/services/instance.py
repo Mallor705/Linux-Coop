@@ -359,7 +359,6 @@ class InstanceService:
         try:
             (sdbx_steam_local / "steamapps").mkdir(parents=True, exist_ok=True)
             (sdbx_steam_local / "compatibilitytools.d").mkdir(parents=True, exist_ok=True)
-            (home_path / "mangoapp").touch(exist_ok=True)
         except PermissionError as e:
             self.logger.error(f"Permission denied when creating Steam directories: {e}")
             raise TwinverseError(f"Permission denied when creating Steam directories: {e}")
